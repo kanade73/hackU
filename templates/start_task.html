@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>タスクタイマー</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2em;
+    }
+    #timerDisplay {
+      font-size: 2em;
+      margin-bottom: 1em;
+    }
+    button {
+      padding: 0.7em 1.2em;
+      font-size: 1em;
+      margin: 0.3em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+  <script>
+    // TASK_ID はテンプレート変数から取得（例："{{ task_id }}"）
+    const TASK_ID = "{{ task_id }}";
+    // localStorageキーは "timerState_" + TASK_ID で管理
+    const STORAGE_KEY = "timerState_" + TASK_ID;
+    let timerInterval = null;
+    let startTime = null;       // タイマー開始時刻（ミリ秒）
+    let elapsedSeconds = 0;     // 累積経過秒数
+    let running = false;        // タイマー動作中なら true
+
+    // タイマー状態を localStorage に保存
+    function saveState() {
+      const state = {
+        task_id: TASK_ID,
+        elapsedSeconds: elapsedSeconds,
+        running: running,
+        startTime: running ? startTime : null
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // 保存状態を localStorage から読み込む
+    function loadState() {
+      const stateStr = localStorage.getItem(STORAGE_KEY);
+      if (stateStr) {
+        try {
+          const state = JSON.parse(stateStr);
+          elapsedSeconds = state.elapsedSeconds || 0;
+          running = state.running || false;
+          if (running && state.startTime) {
+            startTime = state.startTime;
+          }
+        } catch(e) {
+          console.error("状態読み込み失敗:", e);
+        }
+      }
+    }
+
+    // 経過時間を更新し画面表示
+    function updateDisplay() {
+      let total = elapsedSeconds;
+      if (running && startTime) {
+        total += Math.floor((Date.now() - startTime) / 1000);
+      }
+      const min = Math.floor(total / 60);
+      const sec = total % 60;
+      document.getElementById("timerDisplay").textContent = `経過時間: ${min}分 ${sec}秒`;
+    }
+
+    // 【開始】ボタン処理（初回または再開）
+    function handleStart() {
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("toggleBtn").style.display = "inline-block";
+      startTime = Date.now();
+      running = true;
+      saveState();
+      timerInterval = setInterval(updateDisplay, 1000);
+      updateDisplay();
+      document.getElementById("toggleBtn").textContent = "中断";
+    }
+
+    // 【中断／再開】トグルボタンの処理
+    function togglePauseResume() {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+        running = false;
+        document.getElementById("toggleBtn").textContent = "再開";
+      } else {
+        startTime = Date.now();
+        running = true;
+        timerInterval = setInterval(updateDisplay, 1000);
+        document.getElementById("toggleBtn").textContent = "中断";
+      }
+      saveState();
+      updateDisplay();
+    }
+
+    // 【終わり】ボタン処理：タイマー停止後、経過時間をフォームに記録し送信  
+    // ※この更新処理により、DB の time_spent が更新されますが、タスク自体は一覧から削除されません
+    function finishTask() {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+        // チェック済みにするためのフラグを保存
+        localStorage.setItem(`taskCompleted_${TASK_ID}`, 'true');
+
+      }
+      const minutesSpent = Math.round(elapsedSeconds / 60);
+      document.getElementById("time_spent").value = minutesSpent;
+      localStorage.removeItem(STORAGE_KEY);
+      document.getElementById("taskForm").submit();
+    }
+
+    // 【いったん終了】ボタン処理：タイマー状態をクリアしてメイン画面に戻る
+    function temporaryExit() {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+        running = false;
+      }
+      localStorage.removeItem(STORAGE_KEY);
+      // 次回起動時に初期状態となるよう、UI をリセット
+      document.getElementById("startBtn").style.display = "inline-block";
+      document.getElementById("toggleBtn").style.display = "none";
+      window.location.href = "{{ url_for('index') }}";
+    }
+
+    window.onload = function() {
+      loadState();
+      updateDisplay();
+      if (running) {
+        document.getElementById("startBtn").style.display = "none";
+        document.getElementById("toggleBtn").style.display = "inline-block";
+        document.getElementById("toggleBtn").textContent = "中断";
+        timerInterval = setInterval(updateDisplay, 1000);
+      } else {
+        document.getElementById("startBtn").style.display = "inline-block";
+        document.getElementById("toggleBtn").style.display = "none";
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>タスク中…</h1>
+  <div id="timerDisplay">経過時間: 0分 0秒</div>
+
+  <!-- 【開始】ボタン -->
+  <button type="button" id="startBtn" onclick="handleStart()">開始</button>
+  <!-- 【中断／再開】トグルボタン -->
+  <button type="button" id="toggleBtn" style="display:none;" onclick="togglePauseResume()">中断</button>
+  <!-- 【終わり】ボタン -->
+  <button type="button" onclick="finishTask()">終わり</button>
+  <!-- 【いったん終了】ボタン -->
+  <button type="button" onclick="temporaryExit()">いったん終了</button>
+
+  <form id="taskForm" method="POST" action="{{ url_for('finish_task', task_id=task_id) }}">
+    <input type="hidden" id="time_spent" name="time_spent" value="">
+  </form>
+</body>
+</html>

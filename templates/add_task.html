@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>タスク追加</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+    }
+    label {
+      display: block;
+      margin-top: 1em;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.2em;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1.5em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .inline-btn {
+      width: auto;
+      display: inline-block;
+      margin-top: 0.2em;
+      margin-left: 0.5em;
+    }
+    .back-link {
+      margin-top: 2em;
+      display: block;
+    }
+    .repeat-btn {
+      margin-top: 1em;
+      background-color: #008CBA;
+    }
+  </style>
+</head>
+<body>
+  <h1>新しいタスクを追加</h1>
+  <form id="taskForm" action="{{ url_for('add_task') }}" method="POST">
+    <label for="subject">科目</label>
+    <input type="text" name="subject" id="subject" required>
+
+    <label for="timetable_select">今日の時間割から選択</label>
+    <select id="timetable_select" onchange="fillSubjectAndMaybeCategory()">
+      <option value="">選択してください</option>
+      {% for slot in timetable %}
+        <option value="{{ slot.subject }}">{{ slot.period }}限：{{ slot.subject }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="category">カテゴリ</label>
+    <input type="text" name="category" id="category" required placeholder="例：数学, 理科など" onblur="saveCategory()">
+
+    <label for="difficulty">やりたくなさ（1〜5）</label>
+    <select name="difficulty" id="difficulty" required>
+      <option value="">選択してください</option>
+      <option value="1">1（やりやすい）</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5（やりたくない）</option>
+    </select>
+
+    <label for="due_date">締切日</label>
+    <div style="display: flex; align-items: center;">
+      <!-- 日付入力欄 -->
+      <input type="date" name="due_date" id="due_date" required onclick="openDatePicker(event)">
+      <!-- 一週間後ボタン -->
+      <button type="button" class="inline-btn" onclick="setWeekLater()">一週間後</button>
+    </div>
+
+    <!-- 「前と同じ」ボタン：前回の入力を反映して締切日を一週間後に -->
+    <button type="button" class="repeat-btn" onclick="fillPreviousTask()">前と同じ</button>
+
+    <button type="submit">追加する</button>
+  </form>
+
+  <a href="{{ url_for('index') }}" class="back-link">← トップに戻る</a>
+
+  <script>
+    // タイムテーブルから選んだ科目を科目欄に反映し、もしローカルストレージにカテゴリがあればそれも反映
+    function fillSubjectAndMaybeCategory() {
+      const selectedSubject = document.getElementById("timetable_select").value;
+      if (selectedSubject) {
+        document.getElementById("subject").value = selectedSubject;
+      }
+      const savedCategory = localStorage.getItem("last_category");
+      if (savedCategory) {
+        document.getElementById("category").value = savedCategory;
+      }
+    }
+
+    // カテゴリ欄の内容が変更されたらローカルストレージに保存する
+    function saveCategory() {
+      const category = document.getElementById("category").value;
+      if (category) {
+        localStorage.setItem("last_category", category);
+      }
+    }
+
+    // 例：フォーム送信時に他の入力内容（科目、難易度）も保存（任意）
+    document.getElementById("taskForm").addEventListener("submit", function() {
+      const subject = document.getElementById("subject").value;
+      const difficulty = document.getElementById("difficulty").value;
+      localStorage.setItem("last_subject", subject);
+      localStorage.setItem("last_difficulty", difficulty);
+      // 締切日の保存は不要（「前と同じ」では必ず一週間後に設定）
+    });
+
+    // 「前と同じ」ボタン：前回の入力値をフォームに反映し、締切日は一週間後に設定
+    function fillPreviousTask() {
+      const subject = localStorage.getItem("last_subject") || "";
+      const category = localStorage.getItem("last_category") || "";
+      const difficulty = localStorage.getItem("last_difficulty") || "";
+      document.getElementById("subject").value = subject;
+      document.getElementById("category").value = category;
+      document.getElementById("difficulty").value = difficulty;
+      
+      // 一週間後の日付を計算して設定
+      const today = new Date();
+      today.setDate(today.getDate() + 7);
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
+      document.getElementById("due_date").value = formattedDate;
+    }
+
+    // 日付入力欄をクリックしたら、対応ブラウザの場合はカレンダーピッカーを表示する
+    function openDatePicker(e) {
+      const dateInput = e.target;
+      if (dateInput.showPicker) {
+        dateInput.showPicker();
+      }
+    }
+
+    // 「一週間後」ボタン：締切日を今日から一週間後に設定する
+    function setWeekLater() {
+      const today = new Date();
+      today.setDate(today.getDate() + 7);
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
+      document.getElementById("due_date").value = formattedDate;
+    }
+  </script>
+</body>
+</html>

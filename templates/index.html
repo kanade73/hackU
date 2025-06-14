@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>今日のタスク</title>
+  <style>
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .timer-info {
+      font-size: 0.9em;
+      color: #555;
+    }
+    label.completed {
+      text-decoration: line-through;
+      color: gray;
+    }
+    .start-btn {
+      padding: 6px 12px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .start-btn:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>今日の時間割</h1>
+  <ul>
+    {% for slot in timetable %}
+      <li>{{ slot.period }}限：{{ slot.subject }}</li>
+    {% else %}
+      <li>時間割が登録されていません</li>
+    {% endfor %}
+  </ul>
+
+  <a href="{{ url_for('edit_timetable') }}">🕒 時間割を編集する</a>
+
+  <h1>今日のやること</h1>
+<ul>
+  {% for task in tasks %}
+    <li>
+      <div class="task-row">
+        {% set completed = task.time_spent is not none %}
+        <input type="checkbox"
+               class="complete-checkbox"
+               data-task-id="{{ task.id }}"
+               {% if completed %}checked disabled{% endif %}>
+        <label id="task_label_{{ task.id }}"
+               class="{% if completed %}completed{% endif %}">
+          {{ task.subject }}（{{ task.category }}）:
+          {% if completed %}
+            完了（実績 {{ task.time_spent }}分）
+          {% else %}
+            予測時間 {{ task.predicted_time }}分
+          {% endif %}
+        </label>
+        <span class="timer-info" id="timer_info_{{ task.id }}"></span>
+        {% if not completed %}
+          <a href="{{ url_for('start_task', task_id=task.id) }}" class="start-btn">開始／再開</a>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+</ul>
+
+
+  <a href="{{ url_for('add_task') }}">＋ タスクを追加する</a>
+
+  <script>
+    // 完了チェックボックスの状態切り替え
+    document.querySelectorAll(".complete-checkbox").forEach(checkbox => {
+      checkbox.addEventListener("change", () => {
+        const taskId = checkbox.dataset.taskId;
+        const label = document.getElementById("task_label_" + taskId);
+        if (checkbox.checked) {
+          label.classList.add("completed");
+          localStorage.setItem("taskCompleted_" + taskId, "true");
+        } else {
+          label.classList.remove("completed");
+          localStorage.removeItem("taskCompleted_" + taskId);
+        }
+      });
+    });
+
+    // 完了状態の復元
+    function applyCompletionState() {
+      document.querySelectorAll(".complete-checkbox").forEach(checkbox => {
+        const taskId = checkbox.dataset.taskId;
+        const label = document.getElementById("task_label_" + taskId);
+        if (localStorage.getItem("taskCompleted_" + taskId) === "true") {
+          checkbox.checked = true;
+          label.classList.add("completed");
+        }
+      });
+    }
+
+    // タイマー情報更新
+    function updateAllTimerInfo() {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key.startsWith("timerState_")) continue;
+
+        try {
+          const state = JSON.parse(localStorage.getItem(key));
+          if (state && state.task_id) {
+            let totalSeconds = state.elapsedSeconds || 0;
+            if (state.running && state.startTime) {
+              totalSeconds += Math.floor((Date.now() - state.startTime) / 1000);
+            }
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const display = hours > 0 ?
+              `（現在 ${hours}時間 ${minutes}分頑張っています）` :
+              `（現在 ${minutes}分頑張っています）`;
+            const span = document.getElementById("timer_info_" + state.task_id);
+            if (span) span.textContent = display;
+          }
+        } catch (e) {
+          console.error("タイマー状態の更新失敗:", e);
+        }
+      }
+    }
+
+    applyCompletionState();
+    setInterval(updateAllTimerInfo, 1000);
+  </script>
+</body>
+</html>
