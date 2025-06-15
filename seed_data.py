@@ -1,8 +1,14 @@
+import os
 from sqlalchemy import create_engine, text
 from datetime import datetime
 
+# 絶対パスを利用して database.db を指定する
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+DATABASE_URI = f"sqlite:///{DB_PATH}"
+
 # DBエンジン作成
-engine = create_engine("sqlite:///database.db")
+engine = create_engine(DATABASE_URI, echo=True)
 
 # 複数の初期データ
 data = [

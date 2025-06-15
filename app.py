@@ -1,10 +1,16 @@
+import os
 from flask import Flask, request, render_template, redirect, url_for
 from sqlalchemy import create_engine, text
 from datetime import datetime, date
 from model.predict import predict_single_task, batch_predict_missing_tasks
 
+# 絶対パスを使ってデータベースファイルを指定する
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+DATABASE_URI = f"sqlite:///{DB_PATH}"
+
 app = Flask(__name__)
-engine = create_engine('sqlite:///database.db')
+engine = create_engine(DATABASE_URI, echo=True)
 
 # 英語曜日とその数値へのマッピング（index.html 用）
 weekday_mapping = {
@@ -91,7 +97,7 @@ def index():
             ORDER BY due_date
         """)).fetchall()
 
-        # 未割当・または残りのタスク（フィルタリング条件から time_spent IS NULL を削除）
+        # 未割当・または残りのタスク
         tasks_remaining = conn.execute(text("""
             SELECT * FROM task
             WHERE assigned_for_today = 0

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>タスク追加</title>
   <style>
+    /* ページ全体のレイアウトとフォント設定 */
     body {
       font-family: Arial, sans-serif;
       padding: 2em;
@@ -28,16 +29,19 @@
     button:hover {
       background-color: #45a049;
     }
+    /* インライン表示用ボタン */
     .inline-btn {
       width: auto;
       display: inline-block;
       margin-top: 0.2em;
       margin-left: 0.5em;
     }
+    /* 戻るリンク用スタイル */
     .back-link {
       margin-top: 2em;
       display: block;
     }
+    /* 前回の入力を反映するボタンのスタイル */
     .repeat-btn {
       margin-top: 1em;
       background-color: #008CBA;
@@ -46,6 +50,7 @@
 </head>
 <body>
   <h1>新しいタスクを追加</h1>
+  <!-- タスク追加フォーム -->
   <form id="taskForm" action="{{ url_for('add_task') }}" method="POST">
     <label for="subject">科目</label>
     <input type="text" name="subject" id="subject" required>
@@ -79,16 +84,17 @@
       <button type="button" class="inline-btn" onclick="setWeekLater()">一週間後</button>
     </div>
 
-    <!-- 「前と同じ」ボタン：前回の入力を反映して締切日を一週間後に -->
+    <!-- 「前と同じ」ボタン：前回の入力を反映し、締切日を一週間後に設定 -->
     <button type="button" class="repeat-btn" onclick="fillPreviousTask()">前と同じ</button>
 
     <button type="submit">追加する</button>
   </form>
 
+  <!-- トップページへ戻るリンク -->
   <a href="{{ url_for('index') }}" class="back-link">← トップに戻る</a>
 
   <script>
-    // タイムテーブルから選んだ科目を科目欄に反映し、もしローカルストレージにカテゴリがあればそれも反映
+    // タイムテーブルから選んだ科目を科目欄に反映し、ローカルストレージに保存されているカテゴリも反映する
     function fillSubjectAndMaybeCategory() {
       const selectedSubject = document.getElementById("timetable_select").value;
       if (selectedSubject) {
@@ -100,7 +106,7 @@
       }
     }
 
-    // カテゴリ欄の内容が変更されたらローカルストレージに保存する
+    // カテゴリ欄の内容をローカルストレージに保存する
     function saveCategory() {
       const category = document.getElementById("category").value;
       if (category) {
@@ -108,16 +114,15 @@
       }
     }
 
-    // 例：フォーム送信時に他の入力内容（科目、難易度）も保存（任意）
+    // フォーム送信時に科目と難易度をローカルストレージに保存する（任意）
     document.getElementById("taskForm").addEventListener("submit", function() {
       const subject = document.getElementById("subject").value;
       const difficulty = document.getElementById("difficulty").value;
       localStorage.setItem("last_subject", subject);
       localStorage.setItem("last_difficulty", difficulty);
-      // 締切日の保存は不要（「前と同じ」では必ず一週間後に設定）
     });
 
-    // 「前と同じ」ボタン：前回の入力値をフォームに反映し、締切日は一週間後に設定
+    // 「前と同じ」ボタン：前回の入力値をフォームに反映し、締切日は一週間後に設定する
     function fillPreviousTask() {
       const subject = localStorage.getItem("last_subject") || "";
       const category = localStorage.getItem("last_category") || "";
@@ -136,7 +141,7 @@
       document.getElementById("due_date").value = formattedDate;
     }
 
-    // 日付入力欄をクリックしたら、対応ブラウザの場合はカレンダーピッカーを表示する
+    // 日付入力欄をクリックした際、対応ブラウザではカレンダーピッカーを表示する
     function openDatePicker(e) {
       const dateInput = e.target;
       if (dateInput.showPicker) {
