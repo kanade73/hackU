@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>メイン画面例</title>
+  <style>
+    /* メニューバー全体のスタイル */
+    .menu-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #2a7ae2;
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+    }
+    /* 各メニューボタンのスタイル */
+    .menu-btn {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #fff;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    /* アイコン用のスタイル（必要に応じてフォントサイズ等調整） */
+    .menu-icon {
+      font-size: 1.5em;
+    }
+    /* ページの上部にメニューバー分の余白を作成 */
+    .content {
+      padding-top: 60px; /* メニューバーの高さ＋余白 */
+    }
+  </style>
+</head>
+<body>
+  <!-- メニューバー -->
+  <div class="menu-bar">
+    <!-- メイン画面 -->
+    <a href="{{ url_for('index') }}" class="menu-btn" title="メイン画面">
+      <span class="menu-icon">🏠</span>
+      <span class="menu-text">メイン</span>
+    </a>
+    <!-- タスク追加画面 -->
+    <a href="{{ url_for('add_task') }}" class="menu-btn" title="タスク追加">
+      <span class="menu-icon">➕</span>
+      <span class="menu-text">追加</span>
+    </a>
+    <!-- 設定画面 -->
+    <a href="{{ url_for('setup') }}" class="menu-btn" title="設定">
+      <span class="menu-icon">⚙️</span>
+      <span class="menu-text">設定</span>
+    </a>
+  </div>
+
+  <!-- 実際のコンテンツ部分。上部に余白をもたせる -->
+  <div class="content">
+    <!-- ここに各画面のコンテンツが入ります -->
+    <h1>ようこそ、メイン画面です</h1>
+    <p>…コンテンツ…</p>
+  </div>
+</body>
+</html>
