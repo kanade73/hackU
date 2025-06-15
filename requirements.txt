@@ -1,4 +1,0 @@
-Flask
-SQLAchemy
-pandas
-scikit-learn
