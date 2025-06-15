@@ -4,6 +4,36 @@
   <meta charset="UTF-8">
   <title>タスク追加</title>
   <style>
+    /* メニューバー関連のスタイル */
+    .menu-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #2a7ae2;
+      padding: 10px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+    }
+    .menu-btn {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #fff;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .menu-icon {
+      font-size: 1.5em;
+    }
+    /* コンテンツ部はメニューバー分の余白を確保 */
+    .content {
+      padding-top: 60px;
+    }
+    
     /* ページ全体のレイアウトとフォント設定 */
     body {
       font-family: Arial, sans-serif;
@@ -49,49 +79,71 @@
   </style>
 </head>
 <body>
-  <h1>新しいタスクを追加</h1>
-  <!-- タスク追加フォーム -->
-  <form id="taskForm" action="{{ url_for('add_task') }}" method="POST">
-    <label for="subject">科目</label>
-    <input type="text" name="subject" id="subject" required>
+  <!-- メニューバー -->
+  <div class="menu-bar">
+    <!-- メイン画面 -->
+    <a href="{{ url_for('index') }}" class="menu-btn" title="メイン画面">
+      <span class="menu-icon">🏠</span>
+      <span class="menu-text">メイン</span>
+    </a>
+    <!-- タスク追加画面 -->
+    <a href="{{ url_for('add_task') }}" class="menu-btn" title="タスク追加">
+      <span class="menu-icon">➕</span>
+      <span class="menu-text">追加</span>
+    </a>
+    <!-- 設定画面 -->
+    <a href="{{ url_for('setup') }}" class="menu-btn" title="設定">
+      <span class="menu-icon">⚙️</span>
+      <span class="menu-text">設定</span>
+    </a>
+  </div>
 
-    <label for="timetable_select">今日の時間割から選択</label>
-    <select id="timetable_select" onchange="fillSubjectAndMaybeCategory()">
-      <option value="">選択してください</option>
-      {% for slot in timetable %}
-        <option value="{{ slot.subject }}">{{ slot.period }}限：{{ slot.subject }}</option>
-      {% endfor %}
-    </select>
+  <!-- コンテンツ部分 -->
+  <div class="content">
+    <h1>新しいタスクを追加</h1>
+    <!-- タスク追加フォーム -->
+    <form id="taskForm" action="{{ url_for('add_task') }}" method="POST">
+      <label for="subject">科目</label>
+      <input type="text" name="subject" id="subject" required>
 
-    <label for="category">カテゴリ</label>
-    <input type="text" name="category" id="category" required placeholder="例：数学, 理科など" onblur="saveCategory()">
+      <label for="timetable_select">今日の時間割から選択</label>
+      <select id="timetable_select" onchange="fillSubjectAndMaybeCategory()">
+        <option value="">選択してください</option>
+        {% for slot in timetable %}
+          <option value="{{ slot.subject }}">{{ slot.period }}限：{{ slot.subject }}</option>
+        {% endfor %}
+      </select>
 
-    <label for="difficulty">やりたくなさ（1〜5）</label>
-    <select name="difficulty" id="difficulty" required>
-      <option value="">選択してください</option>
-      <option value="1">1（やりやすい）</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5（やりたくない）</option>
-    </select>
+      <label for="category">カテゴリ</label>
+      <input type="text" name="category" id="category" required placeholder="例：数学, 理科など" onblur="saveCategory()">
 
-    <label for="due_date">締切日</label>
-    <div style="display: flex; align-items: center;">
-      <!-- 日付入力欄 -->
-      <input type="date" name="due_date" id="due_date" required onclick="openDatePicker(event)">
-      <!-- 一週間後ボタン -->
-      <button type="button" class="inline-btn" onclick="setWeekLater()">一週間後</button>
-    </div>
+      <label for="difficulty">やりたくなさ（1〜5）</label>
+      <select name="difficulty" id="difficulty" required>
+        <option value="">選択してください</option>
+        <option value="1">1（やりやすい）</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5（やりたくない）</option>
+      </select>
 
-    <!-- 「前と同じ」ボタン：前回の入力を反映し、締切日を一週間後に設定 -->
-    <button type="button" class="repeat-btn" onclick="fillPreviousTask()">前と同じ</button>
+      <label for="due_date">締切日</label>
+      <div style="display: flex; align-items: center;">
+        <!-- 日付入力欄 -->
+        <input type="date" name="due_date" id="due_date" required onclick="openDatePicker(event)">
+        <!-- 一週間後ボタン -->
+        <button type="button" class="inline-btn" onclick="setWeekLater()">一週間後</button>
+      </div>
 
-    <button type="submit">追加する</button>
-  </form>
+      <!-- 「前と同じ」ボタン：前回の入力を反映し、締切日を一週間後に設定 -->
+      <button type="button" class="repeat-btn" onclick="fillPreviousTask()">前と同じ</button>
 
-  <!-- トップページへ戻るリンク -->
-  <a href="{{ url_for('index') }}" class="back-link">← トップに戻る</a>
+      <button type="submit">追加する</button>
+    </form>
+
+    <!-- トップページへ戻るリンク -->
+    <a href="{{ url_for('index') }}" class="back-link">← トップに戻る</a>
+  </div>
 
   <script>
     // タイムテーブルから選んだ科目を科目欄に反映し、ローカルストレージに保存されているカテゴリも反映する
