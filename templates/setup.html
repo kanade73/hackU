@@ -11,21 +11,20 @@
         h1, h2 {
             margin-bottom: 0.5em;
         }
-        label {
-            display: block;
-            margin-top: 0.5em;
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
         }
-        input {
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.5em;
+            text-align: center;
+        }
+         input {
             padding: 0.3em;
             box-sizing: border-box;
-        }
-        fieldset {
-            margin-top: 1em;
-            padding: 1em;
-            border: 1px solid #ccc;
-        }
-        legend {
-            font-weight: bold;
+            width: 80%;
         }
         button {
             margin-top: 1.5em;
@@ -55,27 +54,49 @@
 
     <form method="POST" id="setupForm">
         <h2>1. 各曜日の課題に使える時間（分）</h2>
-        {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
-            <label>
-                {{ day }}曜日:
-                <input type="number" name="available_{{ loop.index0 }}" min="0" required>
-            </label>
-        {% endfor %}
+        <table>
+            <thead>
+                <tr>
+                    {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
+                        <th>{{ day }}曜日</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
+                        <td>
+                            <input type="number" name="available_{{ loop.index0 }}" min="0" required>
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
 
         <h2>2. 各曜日の時間割（1限～5限）</h2>
-        {# 時間割登録は「月」～「土」までに限定 #}
-        {% for day in ["月", "火", "水", "木", "金", "土"] %}
-            {% set day_index = loop.index0 %}
-            <fieldset>
-                <legend>{{ day }}曜日</legend>
+        {# 曜日は「月」～「土」までに限定する #}
+        <table>
+            <thead>
+                <tr>
+                    <th>限/曜日</th>
+                    {% for day in ["月", "火", "水", "木", "金", "土"] %}
+                        <th>{{ day }}曜日</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
                 {% for period in range(1, 6) %}
-                    <label>
-                        {{ period }}限:
-                        <input type="text" name="timetable_{{ day_index }}_{{ period }}" style="width: auto;">
-                    </label>
+                    <tr>
+                        <td>{{ period }}限</td>
+                        {% for day_index in range(0, 6) %}
+                            <td>
+                                <input type="text" name="timetable_{{ day_index }}_{{ period }}" style="width: 90%;">
+                            </td>
+                        {% endfor %}
+                    </tr>
                 {% endfor %}
-            </fieldset>
-        {% endfor %}
+            </tbody>
+        </table>
 
         <button type="submit">保存</button>
     </form>

@@ -75,6 +75,7 @@
     }
 
     function handleStart() {
+      // 開始ボタン押下時
       document.getElementById("startBtn").style.display = "none";
       document.getElementById("toggleBtn").style.display = "inline-block";
       startTime = Date.now();
@@ -119,11 +120,11 @@
         elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
         running = false;
       }
-
       const minutesSpent = Math.round(elapsedSeconds / 60);
       document.getElementById("progress_time_spent").value = minutesSpent;
       document.getElementById("progressMessage").textContent = `${minutesSpent}分頑張っています。現在の進捗状況を教えてください。`;
 
+      // ボタン非表示
       document.getElementById("startBtn").style.display = "none";
       document.getElementById("toggleBtn").style.display = "none";
       document.querySelector("button[onclick='finishTask()']").style.display = "none";
@@ -136,13 +137,22 @@
       loadState();
       updateDisplay();
       if (running) {
+        // タイマーが動作中の場合：中断ボタン表示
         document.getElementById("startBtn").style.display = "none";
         document.getElementById("toggleBtn").style.display = "inline-block";
         document.getElementById("toggleBtn").textContent = "中断";
         timerInterval = setInterval(updateDisplay, 1000);
       } else {
-        document.getElementById("startBtn").style.display = "inline-block";
-        document.getElementById("toggleBtn").style.display = "none";
+        if (elapsedSeconds > 0) {
+          // タイマーは停止中だが、既に経過時間があるので「再開」ボタンを表示
+          document.getElementById("startBtn").style.display = "none";
+          document.getElementById("toggleBtn").style.display = "inline-block";
+          document.getElementById("toggleBtn").textContent = "再開";
+        } else {
+          // まだタイマーが一度も始まっていない場合は「開始」ボタンのみ表示
+          document.getElementById("startBtn").style.display = "inline-block";
+          document.getElementById("toggleBtn").style.display = "none";
+        }
       }
     }
   </script>
