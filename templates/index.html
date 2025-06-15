@@ -30,6 +30,22 @@
     .start-btn:hover {
       background-color: #45a049;
     }
+    /* 以下はナビゲーション用ボタンのスタイル */
+    .nav-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #2a7ae2;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    .nav-btn:hover {
+      background: #165cbd;
+    }
+    h2 {
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
@@ -42,36 +58,73 @@
     {% endfor %}
   </ul>
 
-  <a href="{{ url_for('edit_timetable') }}">🕒 時間割を編集する</a>
+  <a href="{{ url_for('edit_timetable') }}">🕒 時間割を編集する</a><br>
+  <!-- ここで初期設定ページへ遷移するボタンを追加 -->
+  <a href="{{ url_for('setup') }}" class="nav-btn">初期設定ページへ</a>
 
-  <h1>今日のやること</h1>
-<ul>
-  {% for task in tasks %}
-    <li>
-      <div class="task-row">
-        {% set completed = task.time_spent is not none %}
-        <input type="checkbox"
-               class="complete-checkbox"
-               data-task-id="{{ task.id }}"
-               {% if completed %}checked disabled{% endif %}>
-        <label id="task_label_{{ task.id }}"
-               class="{% if completed %}completed{% endif %}">
-          {{ task.subject }}（{{ task.category }}）:
-          {% if completed %}
-            完了（実績 {{ task.time_spent }}分）
-          {% else %}
-            予測時間 {{ task.predicted_time }}分
+  <p>setup URL: {{ url_for('setup') }}</p>
+  <p>edit_timetable URL: {{ url_for('edit_timetable') }}</p>
+  <p>add_task URL: {{ url_for('add_task') }}</p>
+
+  <h2>今日やること</h2>
+  <ul>
+    {% for task in tasks_today %}
+      <li>
+        <div class="task-row">
+          {% set completed = task.time_spent is not none %}
+          <input type="checkbox"
+                 class="complete-checkbox"
+                 data-task-id="{{ task.id }}"
+                 {% if completed %}checked disabled{% endif %}>
+          <label id="task_label_{{ task.id }}"
+                 class="{% if completed %}completed{% endif %}">
+            {{ task.subject }}（{{ task.category }}）:
+            {% if completed %}
+              完了（実績 {{ task.time_spent }}分）
+            {% else %}
+              予測時間 {{ task.predicted_time }}分
+            {% endif %}
+          </label>
+          <span class="timer-info" id="timer_info_{{ task.id }}"></span>
+          {% if not completed %}
+            <a href="{{ url_for('start_task', task_id=task.id) }}" class="start-btn">開始／再開</a>
           {% endif %}
-        </label>
-        <span class="timer-info" id="timer_info_{{ task.id }}"></span>
-        {% if not completed %}
-          <a href="{{ url_for('start_task', task_id=task.id) }}" class="start-btn">開始／再開</a>
-        {% endif %}
-      </div>
-    </li>
-  {% endfor %}
-</ul>
+        </div>
+      </li>
+    {% else %}
+      <li>本日やるタスクはありません。</li>
+    {% endfor %}
+  </ul>
 
+  <h2>未完了タスク一覧</h2>
+  <ul>
+    {% for task in tasks_remaining %}
+      <li>
+        <div class="task-row">
+          {% set completed = task.time_spent is not none %}
+          <input type="checkbox"
+                 class="complete-checkbox"
+                 data-task-id="{{ task.id }}"
+                 {% if completed %}checked disabled{% endif %}>
+          <label id="task_label_{{ task.id }}"
+                 class="{% if completed %}completed{% endif %}">
+            {{ task.subject }}（{{ task.category }}）:
+            {% if completed %}
+              完了（実績 {{ task.time_spent }}分）
+            {% else %}
+              予測時間 {{ task.predicted_time }}分
+            {% endif %}
+          </label>
+          <span class="timer-info" id="timer_info_{{ task.id }}"></span>
+          {% if not completed %}
+            <a href="{{ url_for('start_task', task_id=task.id) }}" class="start-btn">開始／再開</a>
+          {% endif %}
+        </div>
+      </li>
+    {% else %}
+      <li>未完了タスクはありません。</li>
+    {% endfor %}
+  </ul>
 
   <a href="{{ url_for('add_task') }}">＋ タスクを追加する</a>
 
@@ -108,7 +161,6 @@
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (!key.startsWith("timerState_")) continue;
-
         try {
           const state = JSON.parse(localStorage.getItem(key));
           if (state && state.task_id) {

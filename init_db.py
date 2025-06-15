@@ -22,4 +22,20 @@ with engine.begin() as conn:
         )
     """))
 
+import sqlite3
+
+def init_db():
+    with open("schema.sql", "r", encoding="utf-8") as f:
+        schema = f.read()
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.executescript(schema)
+    conn.commit()
+    conn.close()
+    print("✅ データベース初期化が完了しました。")
+
+if __name__ == "__main__":
+    init_db()
+
 print("✅ テーブル作成が完了しました。")
