@@ -130,6 +130,10 @@ def index():
 
 @app.route("/start_task/<int:task_id>")
 def start_task(task_id):
+    with engine.begin() as conn:
+        task = conn.execute(text("SELECT id FROM task WHERE id = :id"), {"id": task_id}).fetchone()
+        if not task:
+            return "タスクが見つかりません", 404
     return render_template("start_task.html", task_id=task_id)
 
 @app.route("/finish_task/<int:task_id>", methods=["POST"])
@@ -144,24 +148,18 @@ def finish_task(task_id):
         conn.execute(stmt, {"time_spent": time_spent, "task_id": task_id})
     return redirect(url_for("index"))
 
-from flask import render_template, request, redirect, url_for
-from datetime import datetime
-from sqlalchemy import text
-
 @app.route("/add_task", methods=["GET", "POST"])
 def add_task():
     if request.method == "POST":
+        # タスク追加処理（POST 時）
         subject = request.form["subject"]
         category = request.form["category"]
         difficulty = int(request.form["difficulty"])
         due_date = request.form["due_date"]
 
-        # created_at をフォームから取得（なければ今日）
-        created_at_str = request.form.get("created_at")
-        created_at = datetime.strptime(created_at_str, "%Y-%m-%d") if created_at_str else datetime.now()
-
-        predicted_time = predict_single_task(subject, category, difficulty, due_date, created_at)
-
+        # タスク予測などの処理（例）
+        predicted_time = predict_single_task(subject, category, difficulty, due_date, datetime.now())
+        
         with engine.begin() as conn:
             conn.execute(text("""
                 INSERT INTO task (subject, category, difficulty, due_date, created_at, predicted_time)
@@ -171,14 +169,37 @@ def add_task():
                 "category": category,
                 "difficulty": difficulty,
                 "due_date": due_date,
-                "created_at": created_at,
+                "created_at": datetime.now(),
                 "predicted_time": predicted_time
             })
-
         return redirect(url_for("index"))
+    
+    # GET 時: 月～金の時間割情報を5×5グリッドとして取得する
+    # 対象曜日（英語）は "Monday"～"Friday"。weekday_mapping の定義例：
+    # weekday_mapping = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, ...}
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    
+    # DBから対象曜日（数値：0～4）の時間割情報を全件取得（全曜日の情報を横断して取得）
+    with engine.begin() as conn:
+        results = conn.execute(text("""
+            SELECT * FROM timetable
+            WHERE weekday IN (0, 1, 2, 3, 4)
+            ORDER BY weekday, period
+        """)).fetchall()
+    
+    # timetable_grid: 5行（各行は period 1～5） × 5列（各列は Monday～Friday）の2次元リストを初期化
+    timetable_grid = [["" for _ in range(5)] for _ in range(5)]
+    
+    # 結果から timetable_grid を埋める
+    # ※ DBの各レコードには、row.weekday (0～4) と row.period (1～?) があると仮定
+    for row in results:
+        # 対象は period 1～5 とする
+        if 1 <= row.period <= 5 and 0 <= row.weekday < 5:
+            timetable_grid[row.period - 1][row.weekday] = row.subject
 
-    # GETリクエストの場合、タスク追加フォームを表示するテンプレートを返す
-    return render_template("add_task.html")
+    # timetable_grid という変数名でテンプレートに渡す
+    return render_template("add_task.html", timetable_grid=timetable_grid)
+
 
 
 @app.route("/setup", methods=["GET", "POST"])
@@ -222,14 +243,18 @@ def setup():
 
     return render_template("setup.html")
 
+
+
 @app.route("/timetable", methods=["GET", "POST"])
 def edit_timetable():
-    days = list(weekday_mapping.keys())  # 例: ["Monday", ...]
+    # 今回は Monday～Saturday のみ対象とする
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    
     if request.method == "POST":
         timetable_entries = []
-        # 各曜日の時間割を更新　※投稿フォームのフィールド名は "Monday_1", ... となっている前提の場合
+        # 各曜日の時間割を更新（フォームのフィールド名は "Monday_1", ... "Saturday_5" となる前提）
         for day in days:
-            for period in range(1, 7):
+            for period in range(1, 6):  # 5限まで
                 subject = request.form.get(f"{day}_{period}")
                 if subject:
                     timetable_entries.append({
@@ -237,7 +262,6 @@ def edit_timetable():
                         "period": period,
                         "subject": subject
                     })
-
         with engine.begin() as conn:
             conn.execute(text("DELETE FROM timetable"))
             for entry in timetable_entries:
@@ -245,25 +269,30 @@ def edit_timetable():
                     INSERT INTO timetable (weekday, period, subject)
                     VALUES (:weekday, :period, :subject)
                 """), entry)
-
         return redirect(url_for("edit_timetable"))
 
     with engine.begin() as conn:
         result = conn.execute(text("SELECT * FROM timetable")).fetchall()
 
-    # タイムテーブルを曜日ごとの配列に変換（例: {"Monday": ["数学", "英語", ...], ...}）
-    timetable_dict = {day: [""] * 6 for day in days}
-    reverse_weekday_mapping = {v: k for k, v in weekday_mapping.items()}
+    # timetable_dict のキーを Monday～Saturday、各曜日は5つの期間で初期化
+    timetable_dict = {day: [""] * 5 for day in days}
+    # 反転マッピング：対象曜日のみ（月～Saturday）を対象とする
+    reverse_weekday_mapping = {v: k for k, v in weekday_mapping.items() if k in days}
     for row in result:
+        # row.weekday は整数（例: 0 = Monday, ..., 5 = Saturday）と想定
         day_name = reverse_weekday_mapping.get(row.weekday, "Unknown")
-        timetable_dict[day_name][row.period - 1] = row.subject
+        if day_name != "Unknown" and 1 <= row.period <= 5:
+            timetable_dict[day_name][row.period - 1] = row.subject
 
     return render_template("edit_timetable.html", timetable=timetable_dict, days=days)
+
 
 @app.route("/partial_finish_task/<int:task_id>", methods=["POST"])
 def partial_finish_task(task_id):
     try:
         progress_percent = int(request.form["progress"])
+        # 「いったん終了」時のフォームから送信される time_spent はあくまで現時点の目安として使用するが、
+        # タスク完了状態にはしないため、進捗が100%でない場合は DB の time_spent は更新しません。
         time_spent = float(request.form["time_spent"])
         assert 0 <= progress_percent <= 100
     except (ValueError, KeyError, AssertionError):
@@ -273,19 +302,35 @@ def partial_finish_task(task_id):
         task = conn.execute(text("SELECT predicted_time FROM task WHERE id = :id"), {"id": task_id}).fetchone()
         if task and task.predicted_time is not None:
             original_time = float(task.predicted_time)
-            remaining_time = original_time * (1 - progress_percent / 100)
-
-            conn.execute(text("""
-                UPDATE task
-                SET predicted_time = :remaining_time, time_spent = :time_spent
-                WHERE id = :id
-            """), {
-                "remaining_time": remaining_time,
-                "time_spent": time_spent,
-                "id": task_id
-            })
+            # 進捗に応じた残り時間を計算。最低10分は残す
+            remaining_time = max(original_time * (1 - progress_percent / 100), 10)
+            
+            if progress_percent < 100:
+                # 進捗更新の場合：time_spentはそのままで、predicted_time（残り作業時間）のみ更新
+                conn.execute(text("""
+                    UPDATE task
+                    SET predicted_time = :remaining_time
+                    WHERE id = :id
+                """), {
+                    "remaining_time": remaining_time,
+                    "id": task_id
+                })
+            else:
+                # 100%の場合は、タスク完了とみなして time_spent などを更新し、完了フラグを立てる（必要なら is_completed も更新）
+                conn.execute(text("""
+                    UPDATE task
+                    SET predicted_time = :remaining_time,
+                        time_spent = :time_spent,
+                        is_completed = 1
+                    WHERE id = :id
+                """), {
+                    "remaining_time": remaining_time,
+                    "time_spent": time_spent,
+                    "id": task_id
+                })
 
     return redirect(url_for("index"))
+
 
 
 

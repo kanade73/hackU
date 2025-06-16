@@ -75,7 +75,6 @@
     }
 
     function handleStart() {
-      // 開始ボタン押下時
       document.getElementById("startBtn").style.display = "none";
       document.getElementById("toggleBtn").style.display = "inline-block";
       startTime = Date.now();
@@ -102,10 +101,12 @@
       updateDisplay();
     }
 
+    // 完了ボタンによる処理（ここではタスクを完了として更新する）
     function finishTask() {
       if (running) {
         clearInterval(timerInterval);
         elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
+        // 完了処理として、タスク完了状態をローカルストレージ等に設定する
         localStorage.setItem(`taskCompleted_${TASK_ID}`, 'true');
       }
       const minutesSpent = Math.round(elapsedSeconds / 60);
@@ -114,17 +115,28 @@
       document.getElementById("taskForm").submit();
     }
 
+    // ★ temporaryExit() の改善版 ★
+    // いったん終了では、タイマーを停止し進捗入力フォームを表示するだけで、タスク完了の更新は行わない
     function temporaryExit() {
       if (running) {
         clearInterval(timerInterval);
         elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
-        running = false;
       }
+      // タイマー関連の変数をクリアして中断状態にする
+      running = false;
+      startTime = null;
+      timerInterval = null;
+      
       const minutesSpent = Math.round(elapsedSeconds / 60);
+      // 進捗入力フォームの hidden フィールドに経過時間を設定
       document.getElementById("progress_time_spent").value = minutesSpent;
-      document.getElementById("progressMessage").textContent = `${minutesSpent}分頑張っています。現在の進捗状況を教えてください。`;
-
-      // ボタン非表示
+      // 表示文も、完了ではなく進捗入力のための文言にする
+      document.getElementById("progressMessage").textContent = `${minutesSpent}分頑張っています。現在の進捗状況を入力してください。`;
+      
+      // タイマー状態は破棄
+      localStorage.removeItem(STORAGE_KEY);
+      
+      // ボタン群を非表示にして進捗入力フォームを表示
       document.getElementById("startBtn").style.display = "none";
       document.getElementById("toggleBtn").style.display = "none";
       document.querySelector("button[onclick='finishTask()']").style.display = "none";
@@ -135,21 +147,25 @@
 
     window.onload = function() {
       loadState();
+      // ページ再読込時、前回動作中だった場合はオフライン時間を加味して再開
+      if (running && startTime) {
+        const offlineSeconds = Math.floor((Date.now() - startTime) / 1000);
+        elapsedSeconds += offlineSeconds;
+        startTime = Date.now();
+        saveState();
+      }
       updateDisplay();
       if (running) {
-        // タイマーが動作中の場合：中断ボタン表示
         document.getElementById("startBtn").style.display = "none";
         document.getElementById("toggleBtn").style.display = "inline-block";
         document.getElementById("toggleBtn").textContent = "中断";
         timerInterval = setInterval(updateDisplay, 1000);
       } else {
         if (elapsedSeconds > 0) {
-          // タイマーは停止中だが、既に経過時間があるので「再開」ボタンを表示
           document.getElementById("startBtn").style.display = "none";
           document.getElementById("toggleBtn").style.display = "inline-block";
           document.getElementById("toggleBtn").textContent = "再開";
         } else {
-          // まだタイマーが一度も始まっていない場合は「開始」ボタンのみ表示
           document.getElementById("startBtn").style.display = "inline-block";
           document.getElementById("toggleBtn").style.display = "none";
         }
@@ -161,18 +177,15 @@
   <h1>タスク中…</h1>
   <div id="timerDisplay">経過時間: 0分 0秒</div>
 
-  <!-- ボタン群 -->
   <button type="button" id="startBtn" onclick="handleStart()">開始</button>
   <button type="button" id="toggleBtn" style="display:none;" onclick="togglePauseResume()">中断</button>
   <button type="button" onclick="finishTask()">終わり</button>
   <button type="button" onclick="temporaryExit()">いったん終了</button>
 
-  <!-- 完了フォーム -->
   <form id="taskForm" method="POST" action="{{ url_for('finish_task', task_id=task_id) }}">
     <input type="hidden" id="time_spent" name="time_spent" value="">
   </form>
 
-  <!-- ✅ 進捗入力フォーム（いったん終了時に表示） -->
   <div id="progressForm">
     <h3 id="progressMessage"></h3>
     <form method="POST" action="{{ url_for('partial_finish_task', task_id=task_id) }}">

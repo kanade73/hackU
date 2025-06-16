@@ -33,8 +33,7 @@
     .content {
       padding-top: 60px;
     }
-    
-    /* ページ全体のレイアウトとフォント設定 */
+    /* ページ全体のレイアウトとフォーム設定 */
     body {
       font-family: Arial, sans-serif;
       padding: 2em;
@@ -76,6 +75,29 @@
       margin-top: 1em;
       background-color: #008CBA;
     }
+    /* 時間割グリッド用スタイル */
+    .timetable-grid {
+      margin-top: 20px;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .timetable-grid th,
+    .timetable-grid td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    .timetable-grid th {
+      background-color: #f2f2f2;
+    }
+    .timetable-cell {
+      cursor: pointer;
+      background-color: #fafafa;
+      transition: background-color 0.2s;
+    }
+    .timetable-cell:hover {
+      background-color: #e0f0ff;
+    }
   </style>
 </head>
 <body>
@@ -106,16 +128,54 @@
       <label for="subject">科目</label>
       <input type="text" name="subject" id="subject" required>
 
-      <label for="timetable_select">今日の時間割から選択</label>
-      <select id="timetable_select" onchange="fillSubjectAndMaybeCategory()">
-        <option value="">選択してください</option>
-        {% for slot in timetable %}
-          <option value="{{ slot.subject }}">{{ slot.period }}限：{{ slot.subject }}</option>
-        {% endfor %}
-      </select>
+      <!-- 時間割グリッド -->
+      <h2>今日の時間割から科目を選択</h2>
+      {% if timetable_grid %}
+      <table class="timetable-grid">
+        <thead>
+          <tr>
+            <th>限／曜日</th>
+            <th>月</th>
+            <th>火</th>
+            <th>水</th>
+            <th>木</th>
+            <th>金</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for period in range(1, 6) %}
+          <tr>
+            <th>{{ period }}限</th>
+            {% for day in range(0, 5) %}
+            <td class="timetable-cell" onclick="selectSubject(this)">
+              {% if timetable_grid[period - 1][day] %}
+                {{ timetable_grid[period - 1][day] }}
+              {% else %}
+                &nbsp;
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>時間割が登録されていません。</p>
+      {% endif %}
 
-      <label for="category">カテゴリ</label>
-      <input type="text" name="category" id="category" required placeholder="例：数学, 理科など" onblur="saveCategory()">
+      <!-- カテゴリ（課題の種類）を選択制に変更 -->
+      <label for="category">課題の種類</label>
+      <select name="category" id="category" required onblur="saveCategory()">
+        <option value="">選択してください</option>
+        <option value="レポート">レポート</option>
+        <option value="問題演習">問題演習</option>
+        <option value="プレゼン準備">プレゼン準備</option>
+        <option value="調べ学習">調べ学習</option>
+        <option value="グループディスカッション">グループディスカッション</option>
+        <option value="論文執筆">論文執筆</option>
+        <option value="プロジェクト企画">プロジェクト企画</option>
+        <option value="その他">その他</option>
+      </select>
 
       <label for="difficulty">やりたくなさ（1〜5）</label>
       <select name="difficulty" id="difficulty" required>
@@ -129,13 +189,12 @@
 
       <label for="due_date">締切日</label>
       <div style="display: flex; align-items: center;">
-        <!-- 日付入力欄 -->
         <input type="date" name="due_date" id="due_date" required onclick="openDatePicker(event)">
         <!-- 一週間後ボタン -->
         <button type="button" class="inline-btn" onclick="setWeekLater()">一週間後</button>
       </div>
 
-      <!-- 「前と同じ」ボタン：前回の入力を反映し、締切日を一週間後に設定 -->
+      <!-- 「前と同じ」ボタン（現在の科目ごとに前回の情報を反映） -->
       <button type="button" class="repeat-btn" onclick="fillPreviousTask()">前と同じ</button>
 
       <button type="submit">追加する</button>
@@ -146,56 +205,69 @@
   </div>
 
   <script>
-    // タイムテーブルから選んだ科目を科目欄に反映し、ローカルストレージに保存されているカテゴリも反映する
-    function fillSubjectAndMaybeCategory() {
-      const selectedSubject = document.getElementById("timetable_select").value;
-      if (selectedSubject) {
-        document.getElementById("subject").value = selectedSubject;
-      }
-      const savedCategory = localStorage.getItem("last_category");
-      if (savedCategory) {
-        document.getElementById("category").value = savedCategory;
-      }
+    // 科目欄に、グリッド内のセルをクリックしたときの内容を反映する
+    function selectSubject(cell) {
+      var subject = cell.textContent.trim();
+      if (subject === "") return;
+      document.getElementById("subject").value = subject;
     }
 
-    // カテゴリ欄の内容をローカルストレージに保存する
+    // 科目ごとの前回の情報（カテゴリ、難易度）をローカルストレージに保存する
     function saveCategory() {
-      const category = document.getElementById("category").value;
-      if (category) {
-        localStorage.setItem("last_category", category);
-      }
+      var subject = document.getElementById("subject").value.trim();
+      if (subject === "") return; // 科目が空なら保存しない
+      var category = document.getElementById("category").value;
+      var difficulty = document.getElementById("difficulty").value;
+      var details = {
+        category: category,
+        difficulty: difficulty
+      };
+      localStorage.setItem("last_details_" + subject, JSON.stringify(details));
     }
 
-    // フォーム送信時に科目と難易度をローカルストレージに保存する（任意）
+    // フォーム送信時にも、現在の科目ごとの情報を保存する
     document.getElementById("taskForm").addEventListener("submit", function() {
-      const subject = document.getElementById("subject").value;
-      const difficulty = document.getElementById("difficulty").value;
-      localStorage.setItem("last_subject", subject);
-      localStorage.setItem("last_difficulty", difficulty);
+      var subject = document.getElementById("subject").value.trim();
+      var category = document.getElementById("category").value;
+      var difficulty = document.getElementById("difficulty").value;
+      var details = {
+        category: category,
+        difficulty: difficulty
+      };
+      localStorage.setItem("last_details_" + subject, JSON.stringify(details));
     });
 
-    // 「前と同じ」ボタン：前回の入力値をフォームに反映し、締切日は一週間後に設定する
+    // 「前と同じ」ボタン：現在の科目をキーにし、前回保存された情報を反映する（締切日は一週間後に設定）
     function fillPreviousTask() {
-      const subject = localStorage.getItem("last_subject") || "";
-      const category = localStorage.getItem("last_category") || "";
-      const difficulty = localStorage.getItem("last_difficulty") || "";
-      document.getElementById("subject").value = subject;
-      document.getElementById("category").value = category;
-      document.getElementById("difficulty").value = difficulty;
-      
-      // 一週間後の日付を計算して設定
-      const today = new Date();
+      var subject = document.getElementById("subject").value.trim();
+      if (subject === "") {
+        alert("まず科目を選択してください。");
+        return;
+      }
+      var stored = localStorage.getItem("last_details_" + subject);
+      if (stored) {
+        var details = JSON.parse(stored);
+        if (details.category) {
+          document.getElementById("category").value = details.category;
+        }
+        if (details.difficulty) {
+          document.getElementById("difficulty").value = details.difficulty;
+        }
+      } else {
+        alert("この科目の前回の情報が保存されていません。");
+      }
+      // 締切日を今日から一週間後に設定する
+      var today = new Date();
       today.setDate(today.getDate() + 7);
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const formattedDate = `${yyyy}-${mm}-${dd}`;
-      document.getElementById("due_date").value = formattedDate;
+      var yyyy = today.getFullYear();
+      var mm = String(today.getMonth() + 1).padStart(2, '0');
+      var dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById("due_date").value = `${yyyy}-${mm}-${dd}`;
     }
 
-    // 日付入力欄をクリックした際、対応ブラウザではカレンダーピッカーを表示する
+    // 日付入力欄をクリックした際、（対応ブラウザであれば）カレンダーピッカーを表示する
     function openDatePicker(e) {
-      const dateInput = e.target;
+      var dateInput = e.target;
       if (dateInput.showPicker) {
         dateInput.showPicker();
       }
@@ -203,13 +275,12 @@
 
     // 「一週間後」ボタン：締切日を今日から一週間後に設定する
     function setWeekLater() {
-      const today = new Date();
+      var today = new Date();
       today.setDate(today.getDate() + 7);
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const formattedDate = `${yyyy}-${mm}-${dd}`;
-      document.getElementById("due_date").value = formattedDate;
+      var yyyy = today.getFullYear();
+      var mm = String(today.getMonth() + 1).padStart(2, '0');
+      var dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById("due_date").value = `${yyyy}-${mm}-${dd}`;
     }
   </script>
 </body>
