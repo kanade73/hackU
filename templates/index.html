@@ -1,203 +1,130 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>今日のタスク</title>
-  <style>
-    /* メニューバー関連のスタイル */
-    .menu-bar {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #2a7ae2;
-      padding: 10px;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-    }
-    .menu-btn {
-      margin: 0 15px;
-      text-decoration: none;
-      color: #fff;
-      font-size: 1.2em;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .menu-icon {
-      font-size: 1.5em;
-    }
-    /* コンテンツ部分の上部にメニューバー分の余白を確保 */
-    .content {
-      padding-top: 60px; /* メニューバーの高さ＋余白 */
-    }
-    /* タスク表示用のスタイル */
-    .task-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-    label.completed {
-      text-decoration: line-through;
-      color: gray;
-    }
-    .start-btn {
-      padding: 6px 12px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      text-decoration: none;
-      cursor: pointer;
-    }
-    .start-btn:hover {
-      background-color: #45a049;
-    }
-    /* 画面遷移用ナビゲーションボタン */
-    .nav-btn {
-      display: inline-block;
-      padding: 8px 16px;
-      background: #2a7ae2;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 4px;
-      margin-top: 15px;
-    }
-    .nav-btn:hover {
-      background: #165cbd;
-    }
-    h2 {
-      margin-top: 30px;
-    }
-  </style>
-</head>
-<body>
-  <!-- メニューバー -->
-  <div class="menu-bar">
-    <!-- メイン画面 -->
-    <a href="{{ url_for('index') }}" class="menu-btn" title="メイン画面">
-      <span class="menu-icon">🏠</span>
-      <span class="menu-text">メイン</span>
-    </a>
-    <!-- タスク追加画面 -->
-    <a href="{{ url_for('add_task') }}" class="menu-btn" title="タスク追加">
-      <span class="menu-icon">➕</span>
-      <span class="menu-text">追加</span>
-    </a>
-    <!-- 設定画面 -->
-    <a href="{{ url_for('setup') }}" class="menu-btn" title="設定">
-      <span class="menu-icon">⚙️</span>
-      <span class="menu-text">設定</span>
-    </a>
-  </div>
+{% extends "base.html" %}
 
-  <!-- コンテンツ部分 -->
-  <div class="content">
-    <h1>今日のタスク</h1>
-    
-    <h2>今日やること</h2>
-    <ul>
-      {% for task in tasks_today %}
-        <li>
-          <div class="task-row">
-            {% set completed = task.time_spent is not none %}
-            <input type="checkbox"
-                   class="complete-checkbox"
-                   data-task-id="{{ task.id }}"
-                   {% if completed %}checked disabled{% endif %}>
-            <label id="task_label_{{ task.id }}"
-                   class="{% if completed %}completed{% endif %}">
-              {{ task.subject }}（{{ task.category }}）:
-              {% if completed %}
-                完了（実績 {{ task.time_spent }}分）
-              {% else %}
-                予測時間 {{ task.predicted_time }}分
-              {% endif %}
-            </label>
-            {% if not completed %}
-              <a href="{{ url_for('start_task', task_id=task.id) }}" class="start-btn">開始／再開</a>
-            {% endif %}
-          </div>
-        </li>
-      {% else %}
-        <li>本日やるタスクはありません。</li>
-      {% endfor %}
-    </ul>
+{% block content %}
+{% set checked_tasks_today = checked_tasks_today or [] %}
+{% set checked_tasks_remaining = checked_tasks_remaining or [] %}
+{% set completed_tasks = completed_tasks or [] %}
+<style>
+.task-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.task-box, .timetable-box {
+    border: 2px solid #4CAF50;
+    padding: 15px;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 280px;
+}
+.timetable-item {
+    padding: 5px 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-weight: bold;
+}
+.timetable-item.p1 { background-color: #f8bbd0; }
+.timetable-item.p2 { background-color: #fff59d; }
+.timetable-item.p3 { background-color: #90caf9; }
+.timetable-item.p4 { background-color: #a5d6a7; }
+.timetable-item.p5 { background-color: #ce93d8; }
+.darii-comment {
+    margin-top: 20px;
+    text-align: center;
+}
+.darii-comment img {
+    height: 100px;
+}
+#start-task-btn, .start-btn-remaining {
+    display: block;
+    margin-top: 10px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    }
+    .task-box label {
+    font-size: 0.9rem;  /* お好みで 0.85rem や 0.8rem にしてもOK */
+  }
+  .timetable-item {
+    padding: 10px 15px;          /* 内側の余白を拡大 */
+    margin: 10px 0;              /* 項目間の間隔を少し広く */
+    border-radius: 8px;          /* 丸みも少し拡大 */
+    font-size: 1.1rem;           /* フォントサイズ拡大 */
+    font-weight: bold;
+}
 
-    <!-- ここから「今日の時間割」を表示 -->
-    <h2>今日の時間割</h2>
-    <ul>
-      {% for slot in timetable %}
-        <li>{{ slot.period }}限：{{ slot.subject }}</li>
-      {% else %}
-        <li>時間割が登録されていません。</li>
-      {% endfor %}
-    </ul>
+</style>
 
-    <h2>未完了タスク一覧</h2>
-    <ul>
-      {% for task in tasks_remaining %}
-        <li>
-          <div class="task-row">
-            {% set completed = task.time_spent is not none %}
-            <input type="checkbox"
-                   class="complete-checkbox"
-                   data-task-id="{{ task.id }}"
-                   {% if completed %}checked disabled{% endif %}>
-            <label id="task_label_{{ task.id }}"
-                   class="{% if completed %}completed{% endif %}">
-              {{ task.subject }}（{{ task.category }}）:
-              {% if completed %}
-                完了（実績 {{ task.time_spent }}分）
-              {% else %}
-                予測時間 {{ task.predicted_time }}分
-              {% endif %}
-            </label>
-            {% if not completed %}
-              <a href="{{ url_for('start_task', task_id=task.id) }}" class="start-btn">開始／再開</a>
-            {% endif %}
-          </div>
-        </li>
-      {% else %}
-        <li>未完了タスクはありません。</li>
-      {% endfor %}
-    </ul>
+<form method="POST">
+    <div class="task-section">
+        <div class="task-box">
+            <h2>今日やること</h2>
+            <ul>
+                {% for task in tasks_today %}
+                    <li>
+                        <label>
+                            <!-- チェック時にDBから削除する─Ajax経由で削除 (name属性は "task_○" として task.id を含む) -->
+                            <input type="checkbox" class="delete-on-check" name="task_{{ task.id }}"
+                                {% if ('task_' ~ task.id|string) in checked_tasks_today %}checked{% endif %}
+                                {% if task.id|string in completed_tasks %}checked{% endif %}>
+                            {{ task.subject }}： {{ task.predicted_time_display | default("-") }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+            <select name="selected_task_id">
+                {% for task in tasks_today %}
+                    <option value="{{ task.id }}">{{ task.subject }}（{{ task.category }}）</option>
+                {% endfor %}
+            </select>
+            <button formaction="{{ url_for('start_selected_task') }}" formmethod="get" id="start-task-btn">▶ 作業開始</button>
+        </div>
 
-    <a href="{{ url_for('add_task') }}">＋ タスクを追加する</a>
+        <div class="timetable-box">
+            <h2>今日の時間割</h2>
+            {% for slot in timetable %}
+                <div class="timetable-item p{{ loop.index }}">{{ loop.index }}限：{{ slot['subject'] }}</div>
+            {% endfor %}
+        </div>
+    </div>
 
-    <script>
-      // 完了チェックボックスの状態更新
-      document.querySelectorAll(".complete-checkbox").forEach(checkbox => {
-        checkbox.addEventListener("change", () => {
-          const taskId = checkbox.dataset.taskId;
-          const label = document.getElementById("task_label_" + taskId);
-          if (checkbox.checked) {
-            label.classList.add("completed");
-            localStorage.setItem("taskCompleted_" + taskId, "true");
-          } else {
-            label.classList.remove("completed");
-            localStorage.removeItem("taskCompleted_" + taskId);
-          }
-        });
-      });
+    <div class="darii-comment">
+        <img src="{{ url_for('static', filename='darikun.JPEG') }}" alt="だりぃくん">
+        <div style="margin-top: 5px; background: #e0f2f1; display: inline-block; padding: 5px 10px; border-radius: 10px; border: 2px solid #4CAF50;">
+            今日も一緒にがんばろうね〜〜。
+        </div>
+    </div>
 
-      // 完了状態の復元
-      function applyCompletionState() {
-        document.querySelectorAll(".complete-checkbox").forEach(checkbox => {
-          const taskId = checkbox.dataset.taskId;
-          const label = document.getElementById("task_label_" + taskId);
-          if (localStorage.getItem("taskCompleted_" + taskId) === "true") {
-            checkbox.checked = true;
-            label.classList.add("completed");
-          }
-        });
-      }
+    <div class="task-box" style="margin-top: 40px;">
+        <h2>残りのやることリスト</h2>
+        <ul>
+            {% for task in tasks_remaining %}
+                <li>
+                    <label>
+                        <input type="checkbox" class="delete-on-check" name="remaining_task_{{ task.id }}"
+                            {% if ('remaining_task_' ~ task.id|string) in checked_tasks_remaining %}checked{% endif %}
+                            {% if task.id|string in completed_tasks %}checked{% endif %}>
+                        {{ task.subject }}（{{ task.category }}）：予測時間 {{ task.predicted_time_display | default("-") }}
+                    </label>
+                </li>
+            {% endfor %}
+        </ul>
 
-      applyCompletionState();
-    </script>
-  </div>
-</body>
-</html>
+        <select name="selected_remaining_task_id">
+            {% for task in tasks_remaining %}
+                <option value="{{ task.id }}">{{ task.subject }}（{{ task.category }}）</option>
+            {% endfor %}
+        </select>
+        <button formaction="{{ url_for('start_selected_task') }}" formmethod="get" class="start-btn-remaining">
+            ▶ 作業開始
+        </button>
+    </div>
+</form>
+
+{% endblock %}
