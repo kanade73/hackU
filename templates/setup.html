@@ -66,7 +66,8 @@
                 <tr>
                     {% for day in ["月", "火", "水", "木", "金", "土", "日"] %}
                         <td>
-                            <input type="number" name="available_{{ loop.index0 }}" min="0" required>
+                            <input type="number" name="available_{{ loop.index0 }}" min="0" required
+                                   value="{{ available_times[day] if available_times and day in available_times else '' }}">
                         </td>
                     {% endfor %}
                 </tr>
@@ -74,7 +75,6 @@
         </table>
 
         <h2>2. 各曜日の時間割（1限～5限）</h2>
-        {# 曜日は「月」～「土」までに限定する #}
         <table>
             <thead>
                 <tr>
@@ -90,7 +90,8 @@
                         <td>{{ period }}限</td>
                         {% for day_index in range(0, 6) %}
                             <td>
-                                <input type="text" name="timetable_{{ day_index }}_{{ period }}" style="width: 90%;">
+                                <input type="text" name="timetable_{{ day_index }}_{{ period }}" style="width: 90%;"
+                                       value="{{ timetable_grid[day_index][period-1] if timetable_grid else '' }}">
                             </td>
                         {% endfor %}
                     </tr>
@@ -101,11 +102,10 @@
         <button type="submit">保存</button>
     </form>
 
-    <!-- 元の画面（トップページ）に戻るボタン -->
     <a href="{{ url_for('index') }}" class="back-link">← 戻る</a>
 
     <script>
-      // ページロード時に localStorage から値を読み込み、各入力欄にセットする
+      // ページロード時に localStorage から値を読み込み、各入力欄にセットする（必要に応じて）
       function loadSettings() {
           document.querySelectorAll('#setupForm input').forEach(input => {
               const key = 'setup_' + input.name;
@@ -116,7 +116,7 @@
           });
       }
 
-      // フォーム送信時に、各入力欄の値を localStorage に保存する
+      // フォーム送信時に、各入力欄の値を localStorage に保存する（必要に応じて）
       function saveSettings() {
           document.querySelectorAll('#setupForm input').forEach(input => {
               const key = 'setup_' + input.name;
@@ -124,10 +124,7 @@
           });
       }
 
-      // 読み込み時に設定を反映
       window.addEventListener('load', loadSettings);
-
-      // フォーム送信時に設定を保存
       document.getElementById('setupForm').addEventListener('submit', function() {
           saveSettings();
       });
