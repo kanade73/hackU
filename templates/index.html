@@ -15,7 +15,7 @@
     padding: 15px;
     border-radius: 10px;
     flex: 1;
-    min-width: 280px;
+    min-width: 250px;
 }
 .timetable-item {
     padding: 5px 10px;
@@ -29,12 +29,29 @@
 .timetable-item.p4 { background-color: #a5d6a7; }
 .timetable-item.p5 { background-color: #ce93d8; }
 .darii-comment {
-    margin-top: 20px;
-    text-align: center;
+    margin-top: 3px;
+    display: flex;               /* ← 横並びにする */
+    align-items: center;         /* ← 縦位置中央揃え */
+    justify-content: center;     /* ← 中央寄せ */
+    gap: 20px;                   /* ← 絵と吹き出しの間にスペース */
+    flex-wrap: wrap;             /* ← スマホ対応のため折返し許可 */
+    text-align: left;
 }
+
 .darii-comment img {
-    height: 100px;
+    height: 150px;
 }
+
+.darii-comment .speech-bubble {
+    background: #e0f2f1;
+    padding: 15px 20px;
+    border-radius: 15px;
+    border: 3px solid #4CAF50;
+    font-size: 1.2rem;
+    max-width: 400px;            /* 最大幅を調整して吹き出し感を保つ */
+    word-wrap: break-word;
+}
+
 #start-task-btn, .start-btn-remaining {
     display: block;
     margin-top: 10px;
@@ -62,6 +79,14 @@
 </style>
 
 <form method="POST">
+    <div class="darii-comment">
+      <img src="{{ url_for('static', filename='darikun.JPEG') }}" alt="だりぃくん">
+      <div class="speech-bubble">
+        今日も一緒にがんばろうね〜〜。
+    </div>
+    </div>
+
+
     <div class="task-section">
         <div class="task-box">
             <h2>今日やること</h2>
@@ -94,12 +119,6 @@
         </div>
     </div>
 
-    <div class="darii-comment">
-        <img src="{{ url_for('static', filename='darikun.JPEG') }}" alt="だりぃくん">
-        <div style="margin-top: 5px; background: #e0f2f1; display: inline-block; padding: 5px 10px; border-radius: 10px; border: 2px solid #4CAF50;">
-            今日も一緒にがんばろうね〜〜。
-        </div>
-    </div>
 
     <div class="task-box" style="margin-top: 40px;">
         <h2>残りのやることリスト</h2>
