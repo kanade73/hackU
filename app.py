@@ -292,6 +292,7 @@ def add_task():
                 "created_at": datetime.now(),
                 "predicted_time": predicted_time
             })
+        maybe_generate_today_tasks()
         return redirect(url_for("index"))
 
     # GET: 時間割表示
