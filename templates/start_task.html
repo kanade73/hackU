@@ -8,11 +8,14 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 2em;
+      position: relative;
     }
+
     #timerDisplay {
       font-size: 2em;
       margin-bottom: 1em;
     }
+
     button {
       padding: 0.7em 1.2em;
       font-size: 1em;
@@ -22,12 +25,39 @@
       border: none;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #45a049;
     }
+
     #progressForm {
       margin-top: 2em;
       display: none;
+    }
+
+    /* ↓ だりぃくんの吹き出し表示 */
+    .darii-comment {
+      margin-top: 3em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      text-align: left;
+    }
+
+    .darii-comment img {
+      height: 120px;
+    }
+
+    .darii-comment .speech-bubble {
+      background: #e0f2f1;
+      padding: 15px 20px;
+      border-radius: 15px;
+      border: 3px solid #4CAF50;
+      font-size: 1.1rem;
+      max-width: 350px;
+      word-wrap: break-word;
     }
   </style>
   <script>
@@ -101,12 +131,10 @@
       updateDisplay();
     }
 
-    // 完了ボタンによる処理（ここではタスクを完了として更新する）
     function finishTask() {
       if (running) {
         clearInterval(timerInterval);
         elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
-        // 完了処理として、タスク完了状態をローカルストレージ等に設定する
         localStorage.setItem(`taskCompleted_${TASK_ID}`, 'true');
       }
       const minutesSpent = Math.round(elapsedSeconds / 60);
@@ -115,28 +143,20 @@
       document.getElementById("taskForm").submit();
     }
 
-    // ★ temporaryExit() の改善版 ★
-    // いったん終了では、タイマーを停止し進捗入力フォームを表示するだけで、タスク完了の更新は行わない
     function temporaryExit() {
       if (running) {
         clearInterval(timerInterval);
         elapsedSeconds += Math.floor((Date.now() - startTime) / 1000);
       }
-      // タイマー関連の変数をクリアして中断状態にする
       running = false;
       startTime = null;
       timerInterval = null;
-      
+
       const minutesSpent = Math.round(elapsedSeconds / 60);
-      // 進捗入力フォームの hidden フィールドに経過時間を設定
       document.getElementById("progress_time_spent").value = minutesSpent;
-      // 表示文も、完了ではなく進捗入力のための文言にする
       document.getElementById("progressMessage").textContent = `${minutesSpent}分頑張っています。現在の進捗状況を入力してください。`;
-      
-      // タイマー状態は破棄
       localStorage.removeItem(STORAGE_KEY);
-      
-      // ボタン群を非表示にして進捗入力フォームを表示
+
       document.getElementById("startBtn").style.display = "none";
       document.getElementById("toggleBtn").style.display = "none";
       document.querySelector("button[onclick='finishTask()']").style.display = "none";
@@ -147,7 +167,6 @@
 
     window.onload = function() {
       loadState();
-      // ページ再読込時、前回動作中だった場合はオフライン時間を加味して再開
       if (running && startTime) {
         const offlineSeconds = Math.floor((Date.now() - startTime) / 1000);
         elapsedSeconds += offlineSeconds;
@@ -199,6 +218,12 @@
       <br><br>
       <button type="submit">送信</button>
     </form>
+  </div>
+
+  <!-- 🐢 だりぃくん 吹き出し表示 -->
+  <div class="darii-comment">
+    <img src="{{ url_for('static', filename='darikun.JPEG') }}" alt="だりぃくん">
+    <div class="speech-bubble">あとちょっと、その調子〜〜</div>
   </div>
 </body>
 </html>
